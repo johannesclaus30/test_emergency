@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Simple P2P Chat</title>
+  <script src="https://unpkg.com/simple-peer@9.11.0/simplepeer.min.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="p-6">
+  <h1 class="text-2xl font-bold mb-4">Simple Peer-to-Peer Chat</h1>
+
+  <div class="mb-4">
+    <button id="startInitiator" class="bg-blue-500 text-white px-4 py-2 rounded">Start as Initiator</button>
+  </div>
+
+  <div class="mb-4">
+    <h2 class="font-semibold">Your Signal Data:</h2>
+    <textarea id="mySignal" class="w-full p-2 border rounded h-32" readonly></textarea>
+  </div>
+
+  <div class="mb-4">
+    <h2 class="font-semibold">Paste Remote Signal Data:</h2>
+    <textarea id="remoteSignal" class="w-full p-2 border rounded h-32"></textarea>
+    <button id="connectBtn" class="mt-2 bg-green-500 text-white px-4 py-2 rounded">Connect</button>
+  </div>
+
+  <div class="mb-4">
+    <h2 class="font-semibold">Chat</h2>
+    <div id="messages" class="border p-2 h-40 overflow-y-auto mb-2"></div>
+    <input id="messageInput" class="border p-2 w-3/4" placeholder="Type a message..."/>
+    <button id="sendBtn" class="bg-blue-500 text-white px-4 py-2 rounded">Send</button>
+  </div>
+
+  <script>
+    let peer;
+
+    // Create peer
+    function createPeer(initiator) {
+      peer = new SimplePeer({
+      initiator,
+      trickle: false,
+      config: {
+        iceServers: [
+          { urls: 'stun:stun.l.google.com:19302' },
+          { urls: 'stun:stun1.l.google.com:19302' },
+          {
+            urls: 'turn:openrelay.metered.ca:80',
+            username: 'openrelayproject',
+            credential: 'openrelayproject'
+          },
+          {
+            urls: 'turn:openrelay.metered.ca:443',
+            username: 'openrelayproject',
+            credential: 'openrelayproject'
+          },
+          {
+            urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+            username: 'openrelayproject',
+            credential: 'openrelayproject'
+          }
+        ]
+      }
+    });
+
+
+
+      peer.on('signal', data => {
+        console.log("Signal generated:", data.type);
+        document.getElementById('mySignal').value = JSON.stringify(data);
+      });
+
+      peer.on('connect', () => {
+        addMessage("Connected!", "system");
+      });
+
+      peer.on('data', data => {
+        addMessage(data.toString(), "peer");
+      });
+    }
+
+    // Add messages to chat box
+    function addMessage(text, sender) {
+      const msgBox = document.getElementById('messages');
+      const div = document.createElement('div');
+      div.textContent = sender + ": " + text;
+      msgBox.appendChild(div);
+      msgBox.scrollTop = msgBox.scrollHeight;
+    }
+
+    // Start as initiator
+    document.getElementById('startInitiator').onclick = () => {
+      createPeer(true);
+    };
+
+    // Connect with pasted signal
+    document.getElementById('connectBtn').onclick = () => {
+      if (!peer) createPeer(false); // create as non-initiator
+      const remoteSignal = document.getElementById('remoteSignal').value;
+      try {
+        peer.signal(JSON.parse(remoteSignal));
+      } catch (e) {
+        alert("Invalid signal data");
+      }
+    };
+
+    // Send message
+    document.getElementById('sendBtn').onclick = () => {
+      const input = document.getElementById('messageInput');
+      const msg = input.value.trim();
+      if (msg && peer && peer.connected) {
+        peer.send(msg);
+        addMessage(msg, "you");
+        input.value = "";
+      }
+    };
+  </script>
+</body>
+</html>
