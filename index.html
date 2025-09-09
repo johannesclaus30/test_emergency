@@ -2,9 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Simple P2P Chat (with QR)</title>
+  <title>Simple P2P Chat (QR Scan)</title>
   <script src="https://unpkg.com/simple-peer@9.11.0/simplepeer.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  <script src="https://unpkg.com/html5-qrcode/minified/html5-qrcode.min.js"></script>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 </head>
 <body class="p-6">
@@ -23,9 +24,19 @@
   </div>
 
   <div class="mb-4">
-    <h2 class="font-semibold">Paste Remote Signal Data (or scan QR):</h2>
+    <h2 class="font-semibold">Paste Remote Signal Data:</h2>
     <textarea id="remoteSignal" class="w-full p-2 border rounded h-32"></textarea>
-    <button id="connectBtn" class="mt-2 bg-green-500 text-white px-4 py-2 rounded">Connect</button>
+    <div class="flex gap-2 mt-2">
+      <button id="connectBtn" class="bg-green-500 text-white px-4 py-2 rounded">Connect</button>
+      <button id="scanBtn" class="bg-yellow-500 text-white px-4 py-2 rounded">Scan QR</button>
+    </div>
+  </div>
+
+  <!-- QR Scanner -->
+  <div id="qrScanner" class="hidden mb-4">
+    <h2 class="font-semibold">Scan Initiator's QR Code</h2>
+    <div id="reader" class="w-64 h-64 border"></div>
+    <button id="stopScan" class="mt-2 bg-red-500 text-white px-4 py-2 rounded">Stop Scanning</button>
   </div>
 
   <!-- Chat UI -->
@@ -38,6 +49,7 @@
 
   <script>
     let peer;
+    let qrScanner;
 
     function createPeer(initiator) {
       peer = new SimplePeer({
@@ -71,7 +83,7 @@
         document.getElementById('mySignal').value = json;
 
         // Generate QR code
-        document.getElementById('qrcode').innerHTML = ""; // clear old
+        document.getElementById('qrcode').innerHTML = "";
         new QRCode(document.getElementById("qrcode"), {
           text: json,
           width: 200,
@@ -127,6 +139,32 @@
         input.value = "";
       } else {
         alert("Not connected yet!");
+      }
+    };
+
+    // QR scan button
+    document.getElementById('scanBtn').onclick = () => {
+      document.getElementById('qrScanner').classList.remove('hidden');
+      qrScanner = new Html5Qrcode("reader");
+      qrScanner.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: 200 },
+        (decodedText) => {
+          document.getElementById('remoteSignal').value = decodedText;
+          qrScanner.stop();
+          document.getElementById('qrScanner').classList.add('hidden');
+        },
+        (error) => {
+          // ignore scanning errors
+        }
+      );
+    };
+
+    // Stop scanning manually
+    document.getElementById('stopScan').onclick = () => {
+      if (qrScanner) {
+        qrScanner.stop();
+        document.getElementById('qrScanner').classList.add('hidden');
       }
     };
   </script>
